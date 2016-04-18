@@ -33,6 +33,9 @@ namespace OTC
         [Option('b', "nobackup", DefaultValue = false, HelpText = "Do NOT create a backup (.bak) of each changed document.")]
         public bool NoBackup { get; set; }
 
+        [Option('t', "dry-run", DefaultValue = false, HelpText = "Do not change any files (for testing).")]
+        public bool DryRun { get; set; }
+
 
         [ParserState]
         public IParserState LastParserState { get; set; }
@@ -40,8 +43,9 @@ namespace OTC
         [HelpOption]
         public string GetUsage()
         {
-            return HelpText.AutoBuild(this,
-              (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current));
+            // 
+            return "Office Template Corrector\nCorrecting wrong paths to templates in MS Office Word documents.\nUSE AT YOUR OWN RISK.\n\n" + 
+                HelpText.AutoBuild(this, (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current));
         }
     }
 
@@ -65,8 +69,10 @@ namespace OTC
                 string tempDir = Path.GetTempPath();
                 int fileCounter = 0; // counter for files
                 int changeCounter = 0; // counter for corrected files
+                int errorCounter = 0; // counter for errors
                 bool error = false;
                 bool changed = false;
+
 
                 // Output some information
                 Console.WriteLine("Directory   : " + options.Directory);
@@ -74,28 +80,35 @@ namespace OTC
                 Console.WriteLine("Replace with: " + options.New);
                 Console.WriteLine("no Backups  : " + options.NoBackup.ToString());
                 Console.WriteLine("Recursive   : " + options.Recursive.ToString());
+                Console.WriteLine("Dry run     : " + options.DryRun.ToString());
+
 
                 // start time measurement
                 Stopwatch stopWatch = new Stopwatch();
                 stopWatch.Start();
 
-                // fetch the files
-                string[] files;
+                var so = SearchOption.TopDirectoryOnly;
                 if (options.Recursive)
                 {
-                    files = Directory.GetFiles(options.Directory, "*.docx", SearchOption.AllDirectories);
-                } else
-                {
-                    files = Directory.GetFiles(options.Directory, "*.docx", SearchOption.TopDirectoryOnly);
+                    so = SearchOption.AllDirectories;
                 }
 
+
+                // fetch all possible affected documents
+                var files = Directory.EnumerateFiles(options.Directory, "*.*", so)
+                    .Where(s => s.EndsWith(".docx", StringComparison.OrdinalIgnoreCase)
+                             || s.EndsWith(".docm", StringComparison.OrdinalIgnoreCase)
+                             || s.EndsWith(".docm", StringComparison.OrdinalIgnoreCase)
+                             || s.EndsWith(".dotm", StringComparison.OrdinalIgnoreCase));
+
+                // iterate through documents
                 foreach (string file in files)
                 {
                     fileCounter++;
                     error = false;
                     changed = false;
 
-                    Console.Write("        " + file);
+                    Console.Write("         " + file);
 
                     string tempUnzipDir = tempDir + tempUnzipDirPrefix + Path.GetFileName(file);
 
@@ -113,44 +126,52 @@ namespace OTC
                             string newContent = oldContent.Replace(options.Old, options.New); // replace
                             if (oldContent != newContent)
                             {
-                                changeCounter++;
-                                File.WriteAllText(settingsFilePath, newContent);
-                                changed = true;
-
-                                // save original file
-                                try
+                                // check for DryRun
+                                if (options.DryRun)
                                 {
-                                    File.Move(file, file + ".bak");
+                                    changed = true;
+                                    changeCounter++;
+                                }
+                                else
+                                {
 
-                                    // Re-Zip files to docx
+                                    File.WriteAllText(settingsFilePath, newContent);
+                                    changed = true;
+                                    changeCounter++;
+
+                                    // save original file
                                     try
                                     {
-                                        ZipFile.CreateFromDirectory(tempUnzipDir, file);
+                                        File.Move(file, file + ".bak");
 
-                                        // delete backup file if wanted
-                                        if (options.NoBackup)
+                                        // Re-Zip files to docx
+                                        try
                                         {
-                                            File.Delete(file + ".bak");
+                                            ZipFile.CreateFromDirectory(tempUnzipDir, file);
+
+                                            // delete backup file if wanted
+                                            if (options.NoBackup)
+                                            {
+                                                File.Delete(file + ".bak");
+                                            }
+                                        }
+                                        catch (Exception e2)
+                                        {
+                                            error = true;
+                                            Console.Write(" - rezip failed: {0}", e2.Message);
+
+                                            // undo rename
+                                            File.Move(file + ".bak", file);
+                                            Console.Write(" - backup restored");
                                         }
                                     }
-                                    catch (Exception e2)
+                                    catch (Exception e3)
                                     {
                                         error = true;
-                                        Console.Write(" - rezip failed");
-                                        Console.Write(e2.ToString());
-
-                                        // undo rename
-                                        File.Move(file + ".bak", file);
-                                        Console.Write(" - backup restored");
+                                        Console.Write(" - creating backup file failed: {0}", e3.Message);
                                     }
+                                    finally { }
                                 }
-                                catch (Exception e3)
-                                {
-                                    error = true;
-                                    Console.Write(" - creating backup file failed");
-                                    Console.Write(e3.ToString());
-                                }
-                                finally { }
                             }
                         }
                         // remove unzipped files and temp folder
@@ -158,6 +179,7 @@ namespace OTC
                     }
                     catch (Exception e1)
                     {
+                        error = true;
                         Console.Write(" - an error occured: {0}", e1.Message);
                     }
                     finally { }
@@ -165,24 +187,39 @@ namespace OTC
                     Console.Write("\r");
                     if (error == true)
                     {
+                        errorCounter++;
                         Console.Write("FAILED");
                     }
                     else
                     {
                         if (changed == true)
                         {
-                            Console.Write("CHANGED");
+                            if (options.DryRun)
+                            {
+                                Console.Write("AFFECTED");
+                            } else {
+                                Console.Write("CHANGED");
+                            }
                         }
                     }
                     Console.Write("\n");
 
                 }
+
                 // Get the elapsed time as a TimeSpan value.
                 stopWatch.Stop();
                 TimeSpan ts = stopWatch.Elapsed;
 
-                Console.WriteLine(fileCounter + " files scanned");
-                Console.WriteLine(changeCounter + " files changed");
+                Console.WriteLine(fileCounter + " file(s) scanned");
+                Console.Write(changeCounter + " file(s) ");
+                if (options.DryRun)
+                {
+                    Console.WriteLine(" need correction");
+                }else
+                {
+                    Console.WriteLine(" need changed");
+                }
+                Console.WriteLine(errorCounter + " error(s) occured");
 
 
                 // Format and display the TimeSpan value.
