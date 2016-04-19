@@ -9,10 +9,10 @@ using System.Diagnostics;
 using CommandLine;
 using CommandLine.Text;
 
-// otc -o \\172.16.1.22\data\Vorlagen -n \\stor1.neos-it.local\data\Vorlagen -d c:\temp\wordtest -r
+// wtc -o \\172.16.1.22\data\Vorlagen -n \\stor1.neos-it.local\data\Vorlagen -d c:\temp\wordtest -r
 
 
-namespace OTC
+namespace WTC
 {
 
     class Options
@@ -44,7 +44,7 @@ namespace OTC
         public string GetUsage()
         {
             // 
-            return "Office Template Corrector\nCorrecting wrong paths to templates in MS Office Word documents.\nUSE AT YOUR OWN RISK.\n\n" + 
+            return "Word Template Corrector\nCorrecting wrong paths to templates in MS Office Word documents.\nUSE AT YOUR OWN RISK.\n\n" + 
                 HelpText.AutoBuild(this, (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current));
         }
     }
@@ -65,7 +65,7 @@ namespace OTC
                 }
 
                 // Initialize some variables
-                string tempUnzipDirPrefix = "_otc_";
+                string tempUnzipDirPrefix = "_wtc_";
                 string tempDir = Path.GetTempPath();
                 int fileCounter = 0; // counter for files
                 int changeCounter = 0; // counter for corrected files
