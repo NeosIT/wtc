@@ -214,10 +214,10 @@ namespace WTC
                 Console.Write(changeCounter + " file(s) ");
                 if (options.DryRun)
                 {
-                    Console.WriteLine(" need correction");
+                    Console.WriteLine("affected and need correction");
                 }else
                 {
-                    Console.WriteLine(" need changed");
+                    Console.WriteLine("corrected");
                 }
                 Console.WriteLine(errorCounter + " error(s) occured");
 
