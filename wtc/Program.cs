@@ -49,6 +49,7 @@ namespace WTC
         }
     }
 
+
     class Program
     {
         static int Main(string[] args)
@@ -60,7 +61,9 @@ namespace WTC
                 // check if folder exits
                 if (!Directory.Exists(options.Directory))
                 {
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Working directory does not exist.");
+                    Console.ForegroundColor = ConsoleColor.White;
                     return 2;
                 }
 
@@ -70,10 +73,10 @@ namespace WTC
                 int fileCounter = 0; // counter for files
                 int changeCounter = 0; // counter for corrected files
                 int errorCounter = 0; // counter for errors
+                int line; // for saving cursor Position
                 bool error = false;
                 bool changed = false;
-
-
+ 
                 // Output some information
                 Console.WriteLine("Directory   : " + options.Directory);
                 Console.WriteLine("Search for  : " + options.Old);
@@ -108,6 +111,7 @@ namespace WTC
                     error = false;
                     changed = false;
 
+                    line = Console.CursorTop;
                     Console.Write("         " + file);
 
                     string tempUnzipDir = tempDir + tempUnzipDirPrefix + Path.GetFileName(file);
@@ -158,17 +162,23 @@ namespace WTC
                                         catch (Exception e2)
                                         {
                                             error = true;
+                                            Console.ForegroundColor = ConsoleColor.Red;
                                             Console.Write(" - rezip failed: {0}", e2.Message);
+
 
                                             // undo rename
                                             File.Move(file + ".bak", file);
                                             Console.Write(" - backup restored");
+                                            Console.ForegroundColor = ConsoleColor.White;
                                         }
                                     }
                                     catch (Exception e3)
                                     {
                                         error = true;
+                                        Console.ForegroundColor = ConsoleColor.Red;
+                                        //Console.Write(" - creating backup file failed: {0}", e3.Message.Replace(System.Environment.NewLine, ""));
                                         Console.Write(" - creating backup file failed: {0}", e3.Message);
+                                        Console.ForegroundColor = ConsoleColor.White;
                                     }
                                     finally { }
                                 }
@@ -180,15 +190,23 @@ namespace WTC
                     catch (Exception e1)
                     {
                         error = true;
+                        Console.ForegroundColor = ConsoleColor.Red;
                         Console.Write(" - an error occured: {0}", e1.Message);
+                        Console.ForegroundColor = ConsoleColor.White;
                     }
                     finally { }
 
                     Console.Write("\r");
+                    if (!Console.IsOutputRedirected) { 
+                        Console.CursorTop = line;
+                    }
+
                     if (error == true)
                     {
                         errorCounter++;
+                        Console.ForegroundColor = ConsoleColor.Red;
                         Console.Write("FAILED");
+                        Console.ForegroundColor = ConsoleColor.White;
                     }
                     else
                     {
@@ -196,10 +214,14 @@ namespace WTC
                         {
                             if (options.DryRun)
                             {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
                                 Console.Write("AFFECTED");
-                            } else {
+                            }
+                            else {
+                                Console.ForegroundColor = ConsoleColor.Green;
                                 Console.Write("CHANGED");
                             }
+                            Console.ForegroundColor = ConsoleColor.White;
                         }
                     }
                     Console.Write("\n");
@@ -235,5 +257,6 @@ namespace WTC
                 return 1;
             }
         }
+
     }
 }
