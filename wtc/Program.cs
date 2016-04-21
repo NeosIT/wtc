@@ -9,7 +9,7 @@ using System.Diagnostics;
 using CommandLine;
 using CommandLine.Text;
 
-// wtc -o \\172.16.1.22\data\Vorlagen -n \\stor1.neos-it.local\data\Vorlagen -d c:\temp\wordtest -r
+// wtc -d \\server\share\documents -o \\oldserver\share\templates\ -n \\server\share\templates\ -r
 
 
 namespace WTC
@@ -36,6 +36,9 @@ namespace WTC
         [Option('t', "dry-run", DefaultValue = false, HelpText = "Do not change any files (for testing).")]
         public bool DryRun { get; set; }
 
+        [Option('v', "verbose", DefaultValue = false, HelpText = "Activates verbose error messages.")]
+        public bool Verbose { get; set; }
+
 
         [ParserState]
         public IParserState LastParserState { get; set; }
@@ -45,7 +48,8 @@ namespace WTC
         {
             // 
             return "Word Template Corrector\nCorrecting wrong paths to templates in MS Office Word documents.\nUSE AT YOUR OWN RISK.\n\n" + 
-                HelpText.AutoBuild(this, (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current));
+                   HelpText.AutoBuild(this, (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current)) + "\n" +
+                   @"  Example: wtc -d \\server\share\documents -o \\oldserver\share\templates\ -n \\server\share\templates\ -r" + "\n";
         }
     }
 
@@ -53,11 +57,20 @@ namespace WTC
     class Program
     {
 
-        public string tempUnzipDirPrefix = "_wtc_";
-        public string tempDir = Path.GetTempPath();
+        public static string tempDir = Path.GetTempPath() + "_wtc_";
 
         static int Main(string[] args)
         {
+
+            // Initialize some variables
+            int fileCounter = 0; // counter for files
+            int changeCounter = 0; // counter for corrected files
+            int errorCounter = 0; // counter for errors
+            int line; // for saving cursor Position
+            ConsoleColor fgColor = Console.ForegroundColor;
+            bool error = false;
+            bool changed = false;
+
             var options = new Options();
             if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
@@ -67,20 +80,10 @@ namespace WTC
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Working directory does not exist.");
-                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.ForegroundColor = fgColor;
                     return 2;
                 }
 
-                // Initialize some variables
-                //string tempUnzipDirPrefix = "_wtc_";
-                //string tempDir = Path.GetTempPath();
-                int fileCounter = 0; // counter for files
-                int changeCounter = 0; // counter for corrected files
-                int errorCounter = 0; // counter for errors
-                int line; // for saving cursor Position
-                bool error = false;
-                bool changed = false;
- 
                 // Output some information
                 Console.WriteLine("Directory   : " + options.Directory);
                 Console.WriteLine("Search for  : " + options.Old);
@@ -108,97 +111,35 @@ namespace WTC
                              || s.EndsWith(".docm", StringComparison.OrdinalIgnoreCase)
                              || s.EndsWith(".dotm", StringComparison.OrdinalIgnoreCase));
 
+
                 // iterate through documents
                 foreach (string file in files)
                 {
                     fileCounter++;
                     error = false;
-                    changed = false;
 
                     line = Console.CursorTop;
                     Console.Write("         " + file);
 
-                    string tempUnzipDir = tempDir + tempUnzipDirPrefix + Path.GetFileName(file);
 
-                    // unzip
+                    // lets try to correct the document
                     try
                     {
-
-                        // unzip document to temp folder
-                        ZipFile.ExtractToDirectory(file, tempUnzipDir);
-
-                        string settingsFilePath = tempUnzipDir + @"\word\_rels\settings.xml.rels";
-                        if (File.Exists(settingsFilePath))
-                        {
-                            string oldContent = File.ReadAllText(settingsFilePath);
-                            string newContent = oldContent.Replace(options.Old, options.New); // replace
-                            if (oldContent != newContent)
-                            {
-                                // check for DryRun
-                                if (options.DryRun)
-                                {
-                                    changed = true;
-                                    changeCounter++;
-                                }
-                                else
-                                {
-
-                                    File.WriteAllText(settingsFilePath, newContent);
-                                    changed = true;
-                                    changeCounter++;
-
-                                    // save original file
-                                    try
-                                    {
-                                        File.Move(file, file + ".bak");
-
-                                        // Re-Zip files to docx
-                                        try
-                                        {
-                                            ZipFile.CreateFromDirectory(tempUnzipDir, file);
-
-                                            // delete backup file if wanted
-                                            if (options.NoBackup)
-                                            {
-                                                File.Delete(file + ".bak");
-                                            }
-                                        }
-                                        catch (Exception e2)
-                                        {
-                                            error = true;
-                                            Console.ForegroundColor = ConsoleColor.Red;
-                                            Console.Write(" - rezip failed: {0}", e2.Message);
-
-
-                                            // undo rename
-                                            File.Move(file + ".bak", file);
-                                            Console.Write(" - backup restored");
-                                            Console.ForegroundColor = ConsoleColor.White;
-                                        }
-                                    }
-                                    catch (Exception e3)
-                                    {
-                                        error = true;
-                                        Console.ForegroundColor = ConsoleColor.Red;
-                                        //Console.Write(" - creating backup file failed: {0}", e3.Message.Replace(System.Environment.NewLine, ""));
-                                        Console.Write(" - creating backup file failed: {0}", e3.Message);
-                                        Console.ForegroundColor = ConsoleColor.White;
-                                    }
-                                    finally { }
-                                }
-                            }
-                        }
-                        // remove unzipped files and temp folder
-                        Directory.Delete(tempUnzipDir, true);
+                        changed = correctDocument(file, options.Old, options.New, options.NoBackup, options.DryRun);
                     }
-                    catch (Exception e1)
+                    catch (Exception e)
                     {
                         error = true;
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.Write(" - an error occured: {0}", e1.Message);
-                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.Write(" - error: {0}", e.Message);
+                        if ((e.InnerException != null) & (options.Verbose))
+                        {
+                            Console.Write(" ({0})", e.InnerException.Message);
+                            line = Console.CursorTop;
+                        }
+                        Console.ForegroundColor = fgColor;
                     }
-                    finally { }
+
 
                     Console.Write("\r");
                     if (!Console.IsOutputRedirected) { 
@@ -210,12 +151,14 @@ namespace WTC
                         errorCounter++;
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.Write("FAILED");
-                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.ForegroundColor = fgColor;
                     }
                     else
                     {
                         if (changed == true)
                         {
+                            changeCounter++;
+
                             if (options.DryRun)
                             {
                                 Console.ForegroundColor = ConsoleColor.Yellow;
@@ -225,12 +168,14 @@ namespace WTC
                                 Console.ForegroundColor = ConsoleColor.Green;
                                 Console.Write("CHANGED");
                             }
-                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.ForegroundColor = fgColor;
                         }
                     }
                     Console.Write("\n");
 
                 }
+
+                // Output results
 
                 // Get the elapsed time as a TimeSpan value.
                 stopWatch.Stop();
@@ -270,18 +215,17 @@ namespace WTC
         /// <param name="newPath">new path to template in document</param>
         /// <param name="makeBackup">create backup file for every corrected document</param>
         /// <param name="dryRun">if true the original file will not be changed</param>
-        /// <returns></returns>
-        bool correctDocument(string file, string oldPath, string newPath,  bool makeBackup, bool dryRun)
+        /// <returns>file is changed or affected</returns>
+        static bool correctDocument(string file, string oldPath, string newPath,  bool noBackup, bool dryRun)
         {
 
-            bool changed;
-            bool error;
+            bool changed = false;
+
+            string tempUnzipDir = tempDir + Path.GetFileName(file);
 
             // unzip
             try
             {
-                string tempUnzipDir = tempDir + tempUnzipDirPrefix + Path.GetFileName(file);
-
                 // unzip document to temp folder
                 ZipFile.ExtractToDirectory(file, tempUnzipDir);
 
@@ -290,6 +234,8 @@ namespace WTC
                 {
                     string oldContent = File.ReadAllText(settingsFilePath);
                     string newContent = oldContent.Replace(oldPath, newPath); // replace
+
+                    // something changed?
                     if (oldContent != newContent)
                     {
                         // check for DryRun
@@ -312,43 +258,72 @@ namespace WTC
                                 try
                                 {
                                     ZipFile.CreateFromDirectory(tempUnzipDir, file);
-
+                                    
                                     // delete backup file if wanted
-                                    if (!makeBackup)
+                                    if (noBackup)
                                     {
                                         File.Delete(file + ".bak");
                                     }
                                 }
                                 catch (Exception e2)
                                 {
-                                    error = true;
-                                    Console.ForegroundColor = ConsoleColor.Red;
-                                    
-                                    Console.Write(" - rezip failed: {0}", e2.Message);
-
-
                                     // undo rename
-                                    File.Move(file + ".bak", file);
-                                    Console.Write(" - backup restored");
-                                    Console.ForegroundColor = ConsoleColor.White;
+                                    try
+                                    {
+                                        File.Move(file + ".bak", file);
+                                    }
+                                    catch (Exception e4)
+                                    {
+                                        WTCException wtcEx4 = new WTCException("failed to remove backup file", e4);
+                                        throw wtcEx4;
+                                    }
+
+                                    WTCException wtcEx2 = new WTCException("failed to rezip", e2);
+                                    throw wtcEx2;
                                 }
                             }
                             catch (Exception e3)
                             {
-                                error = true;
-                                Console.ForegroundColor = ConsoleColor.Red;
-                                //Console.Write(" - creating backup file failed: {0}", e3.Message.Replace(System.Environment.NewLine, ""));
-                                Console.Write(" - creating backup file failed: {0}", e3.Message);
-                                Console.ForegroundColor = ConsoleColor.White;
+                                WTCException wtcEx3 = new WTCException("failed to create backup file", e3);
+                                throw wtcEx3;
                             }
-                            finally { }
                         }
                     }
                 }
+
                 // remove unzipped files and temp folder
-                Directory.Delete(tempUnzipDir, true);
+                try
+                {
+                    Directory.Delete(tempUnzipDir, true);
+                }
+                catch (Exception e5)
+                {
+                    WTCException wtcEx5 = new WTCException("failed to remove temporary unzip directory", e5);
+                    throw wtcEx5;
+                }
+
             }
-            return true;
+            catch (Exception e1)
+            {
+                WTCException wtcEx1 = new WTCException("failed to unzip document", e1);
+                throw wtcEx1;
+            }
+            return changed;
+        }
+
+
+        [Serializable()]
+        public class WTCException : System.Exception
+        {
+            public WTCException() : base() { }
+            public WTCException(string message) : base(message) { }
+            public WTCException(string message, System.Exception inner) : base(message, inner) { }
+
+            // A constructor is needed for serialization when an
+            // exception propagates from a remoting server to the client. 
+            protected WTCException(System.Runtime.Serialization.SerializationInfo info,
+                System.Runtime.Serialization.StreamingContext context)
+            { }
         }
 
     }
