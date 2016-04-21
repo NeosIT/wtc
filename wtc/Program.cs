@@ -52,6 +52,10 @@ namespace WTC
 
     class Program
     {
+
+        public string tempUnzipDirPrefix = "_wtc_";
+        public string tempDir = Path.GetTempPath();
+
         static int Main(string[] args)
         {
             var options = new Options();
@@ -68,8 +72,8 @@ namespace WTC
                 }
 
                 // Initialize some variables
-                string tempUnzipDirPrefix = "_wtc_";
-                string tempDir = Path.GetTempPath();
+                //string tempUnzipDirPrefix = "_wtc_";
+                //string tempDir = Path.GetTempPath();
                 int fileCounter = 0; // counter for files
                 int changeCounter = 0; // counter for corrected files
                 int errorCounter = 0; // counter for errors
@@ -256,6 +260,95 @@ namespace WTC
             {
                 return 1;
             }
+        }
+
+        /// <summary>
+        /// Corrects the template path in a specific word document
+        /// </summary>
+        /// <param name="file">path to document in filesystem</param>
+        /// <param name="oldPath">old path to template in document</param>
+        /// <param name="newPath">new path to template in document</param>
+        /// <param name="makeBackup">create backup file for every corrected document</param>
+        /// <param name="dryRun">if true the original file will not be changed</param>
+        /// <returns></returns>
+        bool correctDocument(string file, string oldPath, string newPath,  bool makeBackup, bool dryRun)
+        {
+
+            bool changed;
+            bool error;
+
+            // unzip
+            try
+            {
+                string tempUnzipDir = tempDir + tempUnzipDirPrefix + Path.GetFileName(file);
+
+                // unzip document to temp folder
+                ZipFile.ExtractToDirectory(file, tempUnzipDir);
+
+                string settingsFilePath = tempUnzipDir + @"\word\_rels\settings.xml.rels";
+                if (File.Exists(settingsFilePath))
+                {
+                    string oldContent = File.ReadAllText(settingsFilePath);
+                    string newContent = oldContent.Replace(oldPath, newPath); // replace
+                    if (oldContent != newContent)
+                    {
+                        // check for DryRun
+                        if (dryRun)
+                        {
+                            changed = true;
+                        }
+                        else
+                        {
+
+                            File.WriteAllText(settingsFilePath, newContent);
+                            changed = true;
+
+                            // save original file
+                            try
+                            {
+                                File.Move(file, file + ".bak");
+
+                                // Re-Zip files to docx
+                                try
+                                {
+                                    ZipFile.CreateFromDirectory(tempUnzipDir, file);
+
+                                    // delete backup file if wanted
+                                    if (!makeBackup)
+                                    {
+                                        File.Delete(file + ".bak");
+                                    }
+                                }
+                                catch (Exception e2)
+                                {
+                                    error = true;
+                                    Console.ForegroundColor = ConsoleColor.Red;
+                                    
+                                    Console.Write(" - rezip failed: {0}", e2.Message);
+
+
+                                    // undo rename
+                                    File.Move(file + ".bak", file);
+                                    Console.Write(" - backup restored");
+                                    Console.ForegroundColor = ConsoleColor.White;
+                                }
+                            }
+                            catch (Exception e3)
+                            {
+                                error = true;
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                //Console.Write(" - creating backup file failed: {0}", e3.Message.Replace(System.Environment.NewLine, ""));
+                                Console.Write(" - creating backup file failed: {0}", e3.Message);
+                                Console.ForegroundColor = ConsoleColor.White;
+                            }
+                            finally { }
+                        }
+                    }
+                }
+                // remove unzipped files and temp folder
+                Directory.Delete(tempUnzipDir, true);
+            }
+            return true;
         }
 
     }
