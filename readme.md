@@ -1,52 +1,129 @@
-![WTC Logo](https://raw.githubusercontent.com/klopps/wtc/master/assets/wtc_logo.png)
-# Deutsch
+# WTC
+The Word Template Corrector
+
+# At a glance
+WTC is a commandline tool to correct old/invalid paths to template files in
+Microsoft Office Word documents in Office Open XML format (since Word 2003).
+
+Those wrong path can be very annoying. If you're opening a document based on a template and the path to template has changed it can take a long, long time for the
+document to open.
+
+WTC was buikd to correct those invalid template paths in many documents very quickly (for example after the workgroup templates were moved to another server or share).
+
+# Compatibility
+* .NET Framework 4.5+
+* Word 2003 (.docx, .dotx, .docm, .dotm)
+
+# Build
+Use Visual Studio 2015 to build.
+
+# Binaries
+The latest single file binary (created with ILMerge) is located in /bin ([Download](/bin/wtc.exe)).
+
+The single binary that includes the CommandLine.dll is created with [ILMerge](https://www.microsoft.com/en-us/download/details.aspx?id=17630). If you like GUIs you can use [ILMerge-GUI](https://ilmergegui.codeplex.com/).
+
+Command to create single binary:
+```
+ILMerge.exe /ndebug /targetplatform:4.0 /out:<path-to-wtc-folder>\bin\wtc.exe <path-to-wtc-folder>\wtc\bin\Release\WTC.exe <path-to-wtc-folder>\wtc\bin\Release\CommandLine.dll
+```
+_Replace `<path-to-wtc>` with your local wtc development folder._
+
+# Usage
+## Options
+* `--help`  
+Shows a help screen
+* `-d, --directory` (required)  
+Path to the documents directory
+* `-o, --old` (required)  
+Path or part of a path to the template or the template directory which must be replaced
+* `-n, --new` (required)  
+The replacement for the path or the part of the path (see above)
+* `-r, recursive` (optional)  
+Also correct documents in all subfolders
+* `-b, --nobackup` (optional)  
+Do **not** create backup files for corrected documents.
+* `-t, --dry-run` (optional)  
+Use test mode. Only searching for documents to be corrected but the documents will not be changed.
+* `-v, --verbose` (optional)  
+Show verbose error messages.
+
+## Example
+`wtc -d \\server\share\documents -o \\alter-server\share\templates\ -n \\server\share\templates\ -r`
+
+## Screenshots
+### Helppage
+`wtc --help`
+
+![wtc --help](assets/screenshot1.png)
+
+### WTC in action
+`wtc -d c:\temp\ -o \\192.168.0.10\ -n \\myserver\ -r`
+
+![wtc --help](assets/screenshot2.png)
+
+### Dry-Run
+`wtc -d c:\temp\ -o \\192.168.0.10\ -n \\myserver\ -r --dry-run`
+
+![wtc --help](assets/screenshot3.png)
+# Contact
+* [christoph.steindorff@neos-it.de](mailto:christoph.steindorff@neos-it.de)
+* http://neos-it.de
+
+# Credits
+Thanks to [Giacomo Stelluti Scala](https://github.com/gsscoder) for his great [Command Line Parser Library](https://github.com/gsscoder/commandline).
+
+# Detailierte Beschreibung (Deutsch)
+
 ## Was ist WTC?
+WTC korrigiert Pfadangaben zur Dokumentenvorlagen in Microsoft Office
+Word-Dateien (ab Word 2003).
+
+## Das Problem
 Erzeugt man Dokumente mit Microsoft Word auf Basis von Vorlagen, so wird im
-Word-Dokument auch der Pfad die dieser Vorlage gespeichert. In Unternehmen
+sWord-Dokument auch der Pfad die dieser Vorlage gespeichert. In Unternehmen
 wird oft eine gemeinsame Sammlung von Vorlagen, die auf einem Server liegt,
 genutzt. So weit so gut.
 
-## Das Problem
-Ändert sich nun der Pfad zum Vorlagenverzeichnis wird die Sache unangenehm.
-Insbesondere die Änderung der Serverangabe ist problematisch. Zum besseren 
-Verständnis hier mal ein Beispiel:
+Ã„ndert sich nun der Pfad zum Vorlagenverzeichnis wird die Sache unangenehm.
+Insbesondere die Ã„nderung der Serverangabe ist problematisch. Zum besseren
+VerstÃ¤ndnis hier mal ein Beispiel:
 
-* Alter Pfad zu den Vorlagen: \\\\alter-server\\share\\templates\\
-* Neuer Pfad zu den Vorlagen: \\\\neuer-server\\share\\templates\\
+* Alter Pfad zu den Vorlagen: `\\alter-server\share\templates\`
+* Neuer Pfad zu den Vorlagen: Â´\\neuer-server\share\templates\`
 * Der alte Server existiert nicht mehr.
 
-Öffnet man nun ein Word-Dokument, dass mit einer Vorlage vom alten Server
+Ã–ffnet man nun ein Word-Dokument, dass mit einer Vorlage vom alten Server
 erzeugt wurde, versucht Word die Vorlage von dort zu laden. Da der Server
 aber gar nicht mehr existiert, versucht Word das so lange, bis es in einen
-Timeout läuft. Und das kann leider gefühlt, sehr lange dauern.
+Timeout lÃ¤uft. Und das kann leider gefÃ¼hlt, sehr lange dauern.
 
-## Die Lösung
-Die Lösung ist naheliegend. In den betroffenen Dokumenten muss **nur** der
-Pfad zur Dokumentenvorlage geändert werden. Dazu findet man im Netz viele
-Lösungen, die aber fast alle eines gemein haben:
+## Die LÃ¶sung
+Die LÃ¶sung ist naheliegend. In den betroffenen Dokumenten muss **nur** der
+Pfad zur Dokumentenvorlage geÃ¤ndert werden. Dazu findet man im Netz viele
+LÃ¶sungen, die aber fast alle eines gemein haben:
 * basieren auf VBA und laufen innerhalb von Word oder Excel,
 * sind langsam,
-* verarbeiten keine Verzeichnisbäume
-* geben keine vernünftigen Fehlermeldungen aus,
-* können nicht adäquat von der Kommandozeile genutzt werden.
+* verarbeiten keine VerzeichnisbÃ¤ume
+* geben keine vernÃ¼nftigen Fehlermeldungen aus,
+* kÃ¶nnen nicht adÃ¤quat von der Kommandozeile genutzt werden.
 
-WTC macht das anders, was allerdings zu einer Einschränkung führt. **WTC
-funktioniert nur für Dokumente im Format Office Open XML, das mit Office 2003
-eingeführt wurde. Die gebräuchlichen Dateiendungen sind .docx, dotx, docm und
+WTC macht das anders, was allerdings zu einer EinschrÃ¤nkung fÃ¼hrt. **WTC
+funktioniert nur fÃ¼r Dokumente im Format Office Open XML, das mit Office 2003
+eingefÃ¼hrt wurde. Die gebrÃ¤uchlichen Dateiendungen sind .docx, dotx, docm und
 dotm.** Diese Dateien sind im Grunde eine Sammlung von
-XML-Dateien, die in ein ZIP-Archiv verpackt sind. Ja tatsächlich. Man kann die
-Dokumente ganz einfach mit einem Programm wie 7Zip öffnen oder entpacken.
+XML-Dateien, die in ein ZIP-Archiv verpackt sind. Ja tatsÃ¤chlich. Man kann die
+Dokumente ganz einfach mit einem Programm wie 7Zip Ã¶ffnen oder entpacken.
 
 ## So arbeitet WTC
-Das Prinzip ist simpel. Datei für Datei wird entpackt und dann wird in der
-Einstellungsdatei `word\_rels\settings.xml.rels` die alte und unerwünschte
+Das Prinzip ist simpel. Datei fÃ¼r Datei wird entpackt und dann wird in der
+Einstellungsdatei `word\_rels\settings.xml.rels` die alte und unerwÃ¼nschte
 Pfadangabe zur Vorlage durch die neue, korrekte ersetzt. Danach wird alles
-wieder eingepackt und die Originaldatei ersetzt. Standardmäßig wird dabei eine
+wieder eingepackt und die Originaldatei ersetzt. StandardmÃ¤ÃŸig wird dabei eine
 Sicherungskopie des Originals mit der Endung .bak erzeugt.
 
 ## Die Optionen
 * `--help`  
-Ausgabe der möglichen Optionen
+Ausgabe der mÃ¶glichen Optionen
 * `-d, --directory` (required)  
 Alle Dokumente in diesem Verzeichnis werden bearbeitet.
 * `-o, --old` (required)  
@@ -56,16 +133,12 @@ Durch diesen Pfad oder Teilpfad wird ersetzt.
 * `-r, recursive` (optional)  
 Bearbeite auch die Dokumente in den Unterverzeichnissen.
 * `-b, --nobackup` (optional)  
-Es werden **keine** Sicherungsdateien für korrigierte Dokumente angelegt.
+Es werden **keine** Sicherungsdateien fÃ¼r korrigierte Dokumente angelegt.
 * `-t, --dry-run` (optional)  
-Testmodus benutzen. Es wird nach zu ändernden Dokumenten gesucht, sie werden aber nicht verändert.
+Testmodus benutzen. Es wird nach zu Ã¤ndernden Dokumenten gesucht, sie werden aber nicht verÃ¤ndert.
 * `-v, --verbose` (optional)  
-Es werden ausführlichere Fehlermeldung ausgegeben.
+Es werden ausfÃ¼hrlichere Fehlermeldung ausgegeben.
 
 ## Beispiel
 `wtc -d \\server\share\documents -o \\alter-server\share\templates\ -n \\server\share\templates\ -r`
 
-
-# English
-
-Translation following soon.
