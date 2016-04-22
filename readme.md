@@ -18,7 +18,7 @@ WTC was buikd to correct those invalid template paths in many documents very qui
 Use Visual Studio 2015 to build.
 
 # Binaries
-The latest single file binary (created with ILMerge) is located in /bin ([Download](/bin/wtc.exe)).
+The latest single file binary (created with ILMerge) is located in /bin ([Download](https://github.com/klopps/wtc/raw/master/bin/wtc.exe)).
 
 The single binary that includes the CommandLine.dll is created with [ILMerge](https://www.microsoft.com/en-us/download/details.aspx?id=17630). If you like GUIs you can use [ILMerge-GUI](https://ilmergegui.codeplex.com/).
 
