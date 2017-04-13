@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("NeosIT GmbH")]
 [assembly: AssemblyProduct("WTC")]
-[assembly: AssemblyCopyright("Copyright © NeosIT GmbH 2016")]
+[assembly: AssemblyCopyright("Copyright © NeosIT GmbH 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // Sie können alle Werte angeben oder die standardmäßigen Build- und Revisionsnummern 
 // übernehmen, indem Sie "*" eingeben:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("0.1.0.1")]
-[assembly: AssemblyFileVersion("0.1.0.1")]
+[assembly: AssemblyVersion("0.1.0.2")]
+[assembly: AssemblyFileVersion("0.1.0.2")]

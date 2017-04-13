@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO;
 using System.IO.Compression;
@@ -14,6 +15,27 @@ using CommandLine.Text;
 
 namespace WTC
 {
+
+    public static class SafeWalk
+    {
+        public static IEnumerable<string> EnumerateFiles(string path, string searchPattern, SearchOption searchOpt)
+        {
+            try
+            {
+                var dirFiles = Enumerable.Empty<string>();
+                if (searchOpt == SearchOption.AllDirectories)
+                {
+                    dirFiles = Directory.EnumerateDirectories(path)
+                                        .SelectMany(x => EnumerateFiles(x, searchPattern, searchOpt));
+                }
+                return dirFiles.Concat(Directory.EnumerateFiles(path, searchPattern));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Enumerable.Empty<string>();
+            }
+        }
+    }
 
     class Options
     {
@@ -84,6 +106,10 @@ namespace WTC
                     return 2;
                 }
 
+                // Replace special characters
+                options.Old = System.Web.HttpUtility.UrlPathEncode(options.Old);
+                options.New = System.Web.HttpUtility.UrlPathEncode(options.New);
+
                 // Output some information
                 Console.WriteLine("Directory   : " + options.Directory);
                 Console.WriteLine("Search for  : " + options.Old);
@@ -105,7 +131,8 @@ namespace WTC
 
 
                 // fetch all possible affected documents
-                var files = Directory.EnumerateFiles(options.Directory, "*.*", so)
+                //var files = Directory.EnumerateFiles(options.Directory, "*.*", so)
+                var files = SafeWalk.EnumerateFiles(options.Directory, "*.*", so)
                     .Where(s => s.EndsWith(".docx", StringComparison.OrdinalIgnoreCase)
                              || s.EndsWith(".docm", StringComparison.OrdinalIgnoreCase)
                              || s.EndsWith(".docm", StringComparison.OrdinalIgnoreCase)
@@ -125,7 +152,7 @@ namespace WTC
                     // lets try to correct the document
                     try
                     {
-                        changed = correctDocument(file, options.Old, options.New, options.NoBackup, options.DryRun);
+                        changed = correctDocument(file, options.Old, options.New, options.NoBackup, options.DryRun, options.Verbose);
                     }
                     catch (Exception e)
                     {
@@ -216,12 +243,18 @@ namespace WTC
         /// <param name="makeBackup">create backup file for every corrected document</param>
         /// <param name="dryRun">if true the original file will not be changed</param>
         /// <returns>file is changed or affected</returns>
-        static bool correctDocument(string file, string oldPath, string newPath,  bool noBackup, bool dryRun)
+        static bool correctDocument(string file, string oldPath, string newPath,  bool noBackup, bool dryRun, bool verbose)
         {
+
+            ConsoleColor fgColor = Console.ForegroundColor;
 
             bool changed = false;
 
             string tempUnzipDir = tempDir + Path.GetFileName(file);
+
+            string TargetPattern = @".*Target=""file:\/\/\/(.*?)""";
+
+            Match m;
 
             // unzip
             try
@@ -233,6 +266,20 @@ namespace WTC
                 if (File.Exists(settingsFilePath))
                 {
                     string oldContent = File.ReadAllText(settingsFilePath);
+
+                    // Show found target in verbose mode
+                    if (verbose)
+                    {
+                        m = Regex.Match(oldContent, TargetPattern);
+                        if (m.Success)
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkCyan;
+                            Console.WriteLine(" - Target: " + m.Groups[1]);
+                            Console.ForegroundColor = fgColor;
+                        }
+                    }
+
+
                     string newContent = oldContent.Replace(oldPath, newPath); // replace
 
                     // something changed?
