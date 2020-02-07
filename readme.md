@@ -46,6 +46,8 @@ Do **not** create backup files for corrected documents.
 Use test mode. Only searching for documents to be corrected but the documents will not be changed.
 * `-v, --verbose` (optional)  
 Show verbose error messages.
+* `-p, --preserve` (optional)  
+Preserve LastAccessTime/LastWriteTime/CreationTime/Attributes/ACL.
 
 ## Example
 `wtc -d \\server\share\documents -o \\alter-server\share\templates\ -n \\server\share\templates\ -r`

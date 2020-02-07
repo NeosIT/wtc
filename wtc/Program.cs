@@ -9,6 +9,7 @@ using System.IO.Compression;
 using System.Diagnostics;
 using CommandLine;
 using CommandLine.Text;
+using System.Security.AccessControl;
 
 // wtc -d \\server\share\documents -o \\oldserver\share\templates\ -n \\server\share\templates\ -r
 
@@ -61,6 +62,8 @@ namespace WTC
         [Option('v', "verbose", DefaultValue = false, HelpText = "Activates verbose error messages.")]
         public bool Verbose { get; set; }
 
+        [Option('p', "preserve", DefaultValue = false, HelpText = "Preserve permissions & dates")]
+        public bool Preserve { get; set; }
 
         [ParserState]
         public IParserState LastParserState { get; set; }
@@ -116,9 +119,9 @@ namespace WTC
                 Console.WriteLine("Replace with: " + options.New);
                 Console.WriteLine("no Backups  : " + options.NoBackup.ToString());
                 Console.WriteLine("Recursive   : " + options.Recursive.ToString());
+                Console.WriteLine("Preserve    : " + options.Preserve.ToString());
                 Console.WriteLine("Dry run     : " + options.DryRun.ToString());
-
-
+                
                 // start time measurement
                 Stopwatch stopWatch = new Stopwatch();
                 stopWatch.Start();
@@ -152,7 +155,7 @@ namespace WTC
                     // lets try to correct the document
                     try
                     {
-                        changed = correctDocument(file, options.Old, options.New, options.NoBackup, options.DryRun, options.Verbose);
+                        changed = correctDocument(file, options.Old, options.New, options.NoBackup, options.DryRun, options.Verbose, options.Preserve);
                     }
                     catch (Exception e)
                     {
@@ -243,7 +246,7 @@ namespace WTC
         /// <param name="makeBackup">create backup file for every corrected document</param>
         /// <param name="dryRun">if true the original file will not be changed</param>
         /// <returns>file is changed or affected</returns>
-        static bool correctDocument(string file, string oldPath, string newPath,  bool noBackup, bool dryRun, bool verbose)
+        static bool correctDocument(string file, string oldPath, string newPath,  bool noBackup, bool dryRun, bool verbose, bool preserve)
         {
 
             ConsoleColor fgColor = Console.ForegroundColor;
@@ -259,6 +262,13 @@ namespace WTC
             // unzip
             try
             {
+                // Get dates
+                    DateTime dtLAT = File.GetLastAccessTimeUtc(file);
+                    DateTime dtLWT = File.GetLastWriteTimeUtc(file);
+                    DateTime dtCT = File.GetCreationTimeUtc(file);
+                    FileAttributes fAttr = File.GetAttributes(file);
+                    FileSecurity fACL = File.GetAccessControl(file);
+
                 // unzip document to temp folder
                 ZipFile.ExtractToDirectory(file, tempUnzipDir);
 
@@ -305,7 +315,17 @@ namespace WTC
                                 try
                                 {
                                     ZipFile.CreateFromDirectory(tempUnzipDir, file);
-                                    
+
+                                    if (preserve)
+                                    {
+                                        // set dates (modified last operation)
+                                        File.SetCreationTimeUtc(file, dtCT);
+                                        File.SetLastAccessTimeUtc(file, dtLAT);
+                                        File.SetAttributes(file, fAttr);
+                                        File.SetAccessControl(file, fACL);
+                                        File.SetLastWriteTimeUtc(file, dtLWT);
+                                    }
+
                                     // delete backup file if wanted
                                     if (noBackup)
                                     {
@@ -352,6 +372,7 @@ namespace WTC
             }
             catch (Exception e1)
             {
+                System.Console.WriteLine(e1.Message);
                 WTCException wtcEx1 = new WTCException("failed to unzip document", e1);
                 throw wtcEx1;
             }
