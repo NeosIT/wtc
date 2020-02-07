@@ -8,7 +8,7 @@ Microsoft Office Word documents in Office Open XML format (since Word 2003).
 Those wrong path can be very annoying. If you're opening a document based on a template and the path to template has changed it can take a long, long time for the
 document to open.
 
-WTC was buikd to correct those invalid template paths in many documents very quickly (for example after the workgroup templates were moved to another server or share).
+WTC was build to correct those invalid template paths in many documents very quickly (for example after the workgroup templates were moved to another server or share).
 
 # Compatibility
 * .NET Framework 4.5+
@@ -17,9 +17,6 @@ WTC was buikd to correct those invalid template paths in many documents very qui
 # Build
 Use Visual Studio 2015 to build.
 
-# Binaries
-The latest single file binary (created with ILMerge) is located in /bin ([Download](https://github.com/klopps/wtc/raw/master/bin/wtc.exe)).
-
 The single binary that includes the CommandLine.dll is created with [ILMerge](https://www.microsoft.com/en-us/download/details.aspx?id=17630). If you like GUIs you can use [ILMerge-GUI](https://ilmergegui.codeplex.com/).
 
 Command to create single binary:
@@ -27,6 +24,12 @@ Command to create single binary:
 ILMerge.exe /ndebug /targetplatform:4.0 /out:<path-to-wtc-folder>\bin\wtc.exe <path-to-wtc-folder>\wtc\bin\Release\WTC.exe <path-to-wtc-folder>\wtc\bin\Release\CommandLine.dll
 ```
 _Replace `<path-to-wtc>` with your local wtc development folder._
+
+For releases, you can use the `release.bat` in the root directory, which executes the ILMerge command above.
+
+# Binaries
+Binaries are no longer shipped inside this repository. You can either download the source code and build it on your own or [purchase a pre-compiled binary on Gumroad](https://gum.co/cbuME)
+
 
 # Usage
 ## Options
@@ -67,9 +70,6 @@ Preserve LastAccessTime/LastWriteTime/CreationTime/Attributes/ACL.
 `wtc -d c:\temp\ -o \\192.168.0.10\ -n \\myserver\ -r --dry-run`
 
 ![wtc --help](assets/screenshot3.png)
-# Contact
-* [christoph.steindorff@neos-it.de](mailto:christoph.steindorff@neos-it.de)
-* http://neos-it.de
 
 # Credits
 Thanks to [Giacomo Stelluti Scala](https://github.com/gsscoder) for his great [Command Line Parser Library](https://github.com/gsscoder/commandline).
@@ -82,7 +82,7 @@ Word-Dateien (ab Word 2003).
 
 ## Das Problem
 Erzeugt man Dokumente mit Microsoft Word auf Basis von Vorlagen, so wird im
-sWord-Dokument auch der Pfad die dieser Vorlage gespeichert. In Unternehmen
+Word-Dokument auch der Pfad die dieser Vorlage gespeichert. In Unternehmen
 wird oft eine gemeinsame Sammlung von Vorlagen, die auf einem Server liegt,
 genutzt. So weit so gut.
 
@@ -143,4 +143,3 @@ Es werden ausführlichere Fehlermeldung ausgegeben.
 
 ## Beispiel
 `wtc -d \\server\share\documents -o \\alter-server\share\templates\ -n \\server\share\templates\ -r`
-

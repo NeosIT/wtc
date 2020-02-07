@@ -1,5 +1,8 @@
-*/bin/
+*/bin/*
 .vs/
-!/bin/
-obj/
+*/obj/*
 publish/
+ILMerge.exe
+wtc.exe
+System.Compiler.dll
+**.zip
