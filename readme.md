@@ -51,9 +51,11 @@ Use test mode. Only searching for documents to be corrected but the documents wi
 Show verbose error messages.
 * `-p, --preserve` (optional)  
 Preserve LastAccessTime/LastWriteTime/CreationTime/Attributes/ACL.
+* `-c, --casesensitive` (optional)
+Do case-sensitive search for string (not enabled by default)
 
 ## Example
-`wtc -d \\server\share\documents -o \\alter-server\share\templates\ -n \\server\share\templates\ -r`
+`wtc -d \\server\share\documents -o \\old-server\share\templates\ -n \\server\share\templates\ -r`
 
 ## Screenshots
 ### Helppage

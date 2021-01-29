@@ -65,6 +65,9 @@ namespace WTC
         [Option('p', "preserve", DefaultValue = false, HelpText = "Preserve permissions & dates")]
         public bool Preserve { get; set; }
 
+        [Option('c', "casesensitive", DefaultValue = false, HelpText = "Do case-sensitive search for string (not enabled by default)")]
+        public bool CaseSensitive { get; set; }
+
         [ParserState]
         public IParserState LastParserState { get; set; }
 
@@ -155,7 +158,7 @@ namespace WTC
                     // lets try to correct the document
                     try
                     {
-                        changed = correctDocument(file, options.Old, options.New, options.NoBackup, options.DryRun, options.Verbose, options.Preserve);
+                        changed = correctDocument(file, options.Old, options.New, options.NoBackup, options.DryRun, options.Verbose, options.Preserve, options.CaseSensitive ? false : true);
                     }
                     catch (Exception e)
                     {
@@ -246,7 +249,7 @@ namespace WTC
         /// <param name="makeBackup">create backup file for every corrected document</param>
         /// <param name="dryRun">if true the original file will not be changed</param>
         /// <returns>file is changed or affected</returns>
-        static bool correctDocument(string file, string oldPath, string newPath,  bool noBackup, bool dryRun, bool verbose, bool preserve)
+        static bool correctDocument(string file, string oldPath, string newPath,  bool noBackup, bool dryRun, bool verbose, bool preserve, bool ignoreCase)
         {
 
             ConsoleColor fgColor = Console.ForegroundColor;
@@ -258,6 +261,7 @@ namespace WTC
             string TargetPattern = @".*Target=""file:\/\/\/(.*?)""";
 
             Match m;
+            RegexOptions regexOptions = (ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
 
             // unzip
             try
@@ -280,7 +284,7 @@ namespace WTC
                     // Show found target in verbose mode
                     if (verbose)
                     {
-                        m = Regex.Match(oldContent, TargetPattern);
+                        m = Regex.Match(oldContent, TargetPattern, RegexOptions.None);
                         if (m.Success)
                         {
                             Console.ForegroundColor = ConsoleColor.DarkCyan;
@@ -289,8 +293,8 @@ namespace WTC
                         }
                     }
 
-
-                    string newContent = oldContent.Replace(oldPath, newPath); // replace
+                    // #2: Do a replacement with eiter ignore case or not
+                    string newContent = Regex.Replace(oldContent, Regex.Escape(oldPath), newPath, regexOptions);
 
                     // something changed?
                     if (oldContent != newContent)
@@ -355,6 +359,12 @@ namespace WTC
                                 throw wtcEx3;
                             }
                         }
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.Write("Content has not been replaced; this could be if you have enabled case-sensitivity and the string could be found but its character cases do not match");
+                        Console.ForegroundColor = fgColor;
                     }
                 }
 
