@@ -10,6 +10,7 @@ using System.Diagnostics;
 using CommandLine;
 using CommandLine.Text;
 using System.Security.AccessControl;
+using System.Reflection;
 
 // wtc -d \\server\share\documents -o \\oldserver\share\templates\ -n \\server\share\templates\ -r
 
@@ -116,6 +117,8 @@ namespace WTC
                 options.Old = System.Web.HttpUtility.UrlPathEncode(options.Old);
                 options.New = System.Web.HttpUtility.UrlPathEncode(options.New);
 
+                Console.WriteLine("Word Template Corrector, version " + Assembly.GetExecutingAssembly().GetName().Version);
+                Console.WriteLine("");
                 // Output some information
                 Console.WriteLine("Directory   : " + options.Directory);
                 Console.WriteLine("Search for  : " + options.Old);
